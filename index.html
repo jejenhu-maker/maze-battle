@@ -765,14 +765,22 @@ function draw() {
 
   if (!gameRunning && !players.length) return;
 
-  // Camera: center between both players
+  // Camera: center between both players with auto-zoom to fit both
   const camX = (players[0].x + players[1].x) / 2;
   const camY = (players[0].y + players[1].y) / 2;
-  const offX = canvas.width / 2 - camX;
-  const offY = canvas.height / 2 - camY;
+
+  // Calculate zoom to keep both players visible with padding
+  const dx = Math.abs(players[0].x - players[1].x) + 200;
+  const dy = Math.abs(players[0].y - players[1].y) + 200;
+  const zoomX = canvas.width / dx;
+  const zoomY = canvas.height / dy;
+  let zoom = Math.min(zoomX, zoomY, 2.5); // max zoom 2.5x
+  zoom = Math.max(zoom, 0.4); // min zoom 0.4x
 
   ctx.save();
-  ctx.translate(offX, offY);
+  ctx.translate(canvas.width / 2, canvas.height / 2);
+  ctx.scale(zoom, zoom);
+  ctx.translate(-camX, -camY);
 
   // Draw maze
   const levelColor = LEVELS[currentLevel]?.color || '#34d399';
@@ -860,21 +868,38 @@ function draw() {
       ctx.fill();
     }
 
+    // Outer ring (pulsing)
+    const ringPulse = 0.7 + 0.3 * Math.sin(time * 4);
+    ctx.strokeStyle = p.stunned > 0 ? '#6b7280' : p.color;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 22 + ringPulse * 4, 0, Math.PI * 2);
+    ctx.stroke();
+
     // Glow
     ctx.fillStyle = p.glow;
     ctx.beginPath();
-    ctx.arc(p.x, p.y, 20, 0, Math.PI * 2);
+    ctx.arc(p.x, p.y, 26, 0, Math.PI * 2);
     ctx.fill();
 
-    // Body
+    // Body (bigger)
     ctx.fillStyle = p.stunned > 0 ? '#6b7280' : p.color;
     ctx.beginPath();
-    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    ctx.arc(p.x, p.y, 16, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Arrow indicator pointing up
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y - 32);
+    ctx.lineTo(p.x - 6, p.y - 24);
+    ctx.lineTo(p.x + 6, p.y - 24);
+    ctx.closePath();
     ctx.fill();
 
     // Team label
     ctx.fillStyle = '#fff';
-    ctx.font = 'bold 10px Fredoka, sans-serif';
+    ctx.font = 'bold 12px Fredoka, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(p.team === 'blue' ? 'B' : 'R', p.x, p.y);
@@ -901,6 +926,47 @@ function draw() {
   }
 
   ctx.restore();
+
+  // ==================== MINIMAP ====================
+  if (maze && maze.tiles) {
+    const mmScale = 3;
+    const mmW = maze.tw * mmScale;
+    const mmH = maze.th * mmScale;
+    const mmX = canvas.width - mmW - 10;
+    const mmY = 60;
+
+    // Background
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillRect(mmX - 2, mmY - 2, mmW + 4, mmH + 4);
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+    ctx.strokeRect(mmX - 2, mmY - 2, mmW + 4, mmH + 4);
+
+    // Maze
+    for (let y = 0; y < maze.th; y++) {
+      for (let x = 0; x < maze.tw; x++) {
+        ctx.fillStyle = maze.tiles[y][x] === 1 ? '#334155' : '#0f172a';
+        ctx.fillRect(mmX + x * mmScale, mmY + y * mmScale, mmScale, mmScale);
+      }
+    }
+
+    // Players on minimap
+    for (const p of players) {
+      const px = mmX + (p.x / CELL) * mmScale;
+      const py = mmY + (p.y / CELL) * mmScale;
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(px, py, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Goals on minimap
+    for (const p of players) {
+      const gx = mmX + (p.goalX / CELL) * mmScale;
+      const gy = mmY + (p.goalY / CELL) * mmScale;
+      ctx.fillStyle = p.team === 'blue' ? 'rgba(59,130,246,0.6)' : 'rgba(239,68,68,0.6)';
+      ctx.fillRect(gx - 2, gy - 2, 4, 4);
+    }
+  }
 }
 
 // ==================== WIN ====================
