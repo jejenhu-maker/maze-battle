@@ -775,7 +775,7 @@ function draw() {
   const zoomX = canvas.width / dx;
   const zoomY = canvas.height / dy;
   let zoom = Math.min(zoomX, zoomY, 2.5); // max zoom 2.5x
-  zoom = Math.max(zoom, 0.4); // min zoom 0.4x
+  zoom = Math.max(zoom, 0.2); // min zoom 0.2x for large mazes
 
   ctx.save();
   ctx.translate(canvas.width / 2, canvas.height / 2);
@@ -933,7 +933,7 @@ function draw() {
     const mmW = maze.tw * mmScale;
     const mmH = maze.th * mmScale;
     const mmX = canvas.width - mmW - 10;
-    const mmY = 60;
+    const mmY = canvas.height - mmH - 20; // bottom-right to avoid HUD overlap
 
     // Background
     ctx.fillStyle = 'rgba(0,0,0,0.7)';
